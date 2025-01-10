@@ -45,9 +45,12 @@ jobs:
           # Create directory for offline repository
           mkdir -p pve
           
-          # Download required Proxmox packages
+          # Download required Proxmox packages with sudo
           sudo apt-get update
           sudo apt-get download -o Dir::Cache="./pve" proxmox-ve postfix open-iscsi
+
+          # Change ownership to runner user
+          sudo chown -R $(whoami):$(whoami) ./pve
 
           # Generate Packages and Packages.gz for the local repository
           cd pve
@@ -59,15 +62,16 @@ jobs:
           echo "Downloaded Proxmox packages:"
           ls -lh pve/
 
+
       # Step 7: Build the custom ISO
       - name: Build custom ISO
         run: |
           # Unpack and prepare the base ISO
           mkdir -p temp
-          mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp
+          sudo mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp
           cp -a temp/. iso
           chmod -R 644 iso
-          umount temp
+          sudo umount temp
 
           # Copy the offline repository and preseed file into the ISO
           cp preseed.cfg ./iso
