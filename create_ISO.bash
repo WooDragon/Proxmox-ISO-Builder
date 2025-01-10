@@ -27,8 +27,14 @@ echo "Downloading Proxmox VE packages..."
 echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" | sudo tee /etc/apt/sources.list.d/pve-install-repo.list
 curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg | sudo tee /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg > /dev/null
 sudo apt-get update
-apt-get download proxmox-ve postfix open-iscsi
-mv *.deb ./pve/
+
+# Use apt-get to download all dependencies
+mkdir -p ./pve
+sudo apt-get install --download-only --reinstall -y proxmox-ve postfix open-iscsi -o Dir::Cache="./pve"
+
+# Move all downloaded .deb files to pve directory
+mv ./pve/archives/*.deb ./pve/
+rm -rf ./pve/archives
 
 # Step 4: Generate Packages and Packages.gz for local repository
 echo "Generating local repository metadata..."
