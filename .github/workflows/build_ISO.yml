@@ -18,7 +18,7 @@ jobs:
         uses: addnab/docker-run-action@v3
         with:
           image: debian:12
-          options: --privileged  # Allow privileged operations (for mounting ISO)
+          options: --privileged
           run: |
             # Update and install required tools
             apt-get update
@@ -82,3 +82,12 @@ jobs:
 
             # Save the ISO
             mv proxmox_custom.iso /github/workspace/
+
+      # Step 3: Publish the ISO
+      - name: Release custom ISO
+        uses: ncipollo/release-action@v1
+        with:
+          commit: "main"
+          name: "Proxmox Custom ISO"
+          tag: "v1.0.0"
+          artifacts: "proxmox_custom.iso"
