@@ -81,11 +81,11 @@ jobs:
           sudo umount temp
 
           # Copy the offline repository and preseed file into the ISO
-          cp preseed.cfg ./iso
-          cp -r pve ./iso
+          sudo cp preseed.cfg ./iso
+          sudo cp -r pve ./iso
 
           # Update boot menu to include the preseed configuration
-          sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
+          sudo sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
           # Build the custom ISO
           xorriso \
