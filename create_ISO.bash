@@ -22,37 +22,40 @@ cp -a temp/. iso
 sudo chmod -R 644 iso
 sudo umount temp
 
-# Step 3: Download Proxmox VE packages
+# Step 3: Download Proxmox VE packages and dependencies without installation
 echo "Downloading Proxmox VE packages..."
 echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" | sudo tee /etc/apt/sources.list.d/pve-install-repo.list
 curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg | sudo tee /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg > /dev/null
 sudo apt-get update
 
-# Use apt-get to download all dependencies
+# Step 4: Use apt-rdepends to list and download all dependencies
+echo "Fetching package dependencies..."
 mkdir -p ./pve
-sudo apt-get install --download-only --reinstall -y proxmox-ve postfix open-iscsi -o Dir::Cache="./pve"
+apt-rdepends proxmox-ve | grep -v "^ " | sort -u > dependencies.txt
 
-# Move all downloaded .deb files to pve directory
-mv ./pve/archives/*.deb ./pve/
-rm -rf ./pve/archives
+echo "Downloading packages..."
+while read -r package; do
+  echo "Downloading $package..."
+  apt-get download "$package" || echo "Failed to download $package, skipping."
+done < dependencies.txt
 
-# Step 4: Generate Packages and Packages.gz for local repository
+# Step 5: Generate Packages and Packages.gz for local repository
 echo "Generating local repository metadata..."
 cd pve
 dpkg-scanpackages . > Packages
 gzip -9c Packages > Packages.gz
 cd ..
 
-# Step 5: Add local repository and preseed configuration to ISO
+# Step 6: Add local repository and preseed configuration to ISO
 echo "Adding repository and preseed to ISO..."
 cp preseed.cfg ./iso
 cp -r pve ./iso
 
-# Step 6: Modify bootloader for automated installation
+# Step 7: Modify bootloader for automated installation
 echo "Modifying bootloader configuration..."
 sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
-# Step 7: Build the custom ISO
+# Step 8: Build the custom ISO
 echo "Building the custom ISO..."
 xorriso \
   -outdev "$OUTPUT_ISO" \
@@ -66,12 +69,12 @@ xorriso \
   -boot_image any efi_path=boot/grub/efi.img \
   -boot_image isolinux partition_entry=gpt_basdat
 
-# Step 8: Make the ISO hybrid for BIOS and UEFI
+# Step 9: Make the ISO hybrid for BIOS and UEFI
 echo "Making ISO hybrid..."
 isohybrid --uefi "$OUTPUT_ISO"
 
 # Cleanup
 echo "Cleaning up temporary files..."
-rm -rf temp iso pve
+rm -rf temp iso pve dependencies.txt
 
 echo "Custom ISO created: $OUTPUT_ISO"
