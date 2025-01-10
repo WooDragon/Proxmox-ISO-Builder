@@ -77,7 +77,7 @@ jobs:
           mkdir -p temp
           sudo mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp
           cp -a temp/. iso
-          chmod -R 644 iso
+          sudo chmod -R 644 iso
           sudo umount temp
 
           # Copy the offline repository and preseed file into the ISO
