@@ -36,7 +36,7 @@ jobs:
       # Step 5: Download the Debian ISO
       - name: Download Debian ISO
         run: |
-          wget ${{ env.DEBIAN_ISO_URL }} -O ${{ env.DEBIAN_ISO_NAME }}
+          wget -q --show-progress ${{ env.DEBIAN_ISO_URL }} -O ${{ env.DEBIAN_ISO_NAME }}
           ls -lh ${{ env.DEBIAN_ISO_NAME }}
           if [ ! -s "${{ env.DEBIAN_ISO_NAME }}" ]; then
             echo "Error: ISO file not downloaded or empty."
