@@ -15,7 +15,7 @@ jobs:
       - name: Prepare environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y xorriso dpkg-dev curl gnupg
+          sudo apt-get install -y xorriso dpkg-dev curl gnupg syslinux-utils
 
       - name: Download Debian ISO
         run: |
