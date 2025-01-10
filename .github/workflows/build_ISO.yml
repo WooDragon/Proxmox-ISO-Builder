@@ -48,7 +48,7 @@ jobs:
 
           # Move downloaded packages to a dedicated directory
           mkdir -p pve
-          mv /var/cache/apt/archives/*.deb ./pve/
+          sudo mv /var/cache/apt/archives/*.deb ./pve/
 
           # Generate Packages and Packages.gz for the local repository
           cd pve
