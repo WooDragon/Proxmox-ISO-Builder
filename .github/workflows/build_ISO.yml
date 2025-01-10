@@ -74,4 +74,5 @@ jobs:
           name: "Download ISO"
           tag: "${{ env.DEBIAN_VERSION }}"
           artifacts: "proxmox_custom.iso"
-          updateOnlyUnreleased: true
+          allowUpdates: true
+          
