@@ -9,22 +9,29 @@ jobs:
       contents: write
 
     steps:
-      # Step 1: Checkout the repository
+      # Step 1: Set variables
+      - name: Set version variables
+        run: |
+          echo "DEBIAN_VERSION=12.8.0" >> $GITHUB_ENV
+          echo "DEBIAN_ISO_NAME=debian-${{ env.DEBIAN_VERSION }}-amd64-netinst.iso" >> $GITHUB_ENV
+          echo "DEBIAN_ISO_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${{ env.DEBIAN_ISO_NAME }}" >> $GITHUB_ENV
+
+      # Step 2: Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Prepare the environment
+      # Step 3: Prepare the environment
       - name: Prepare environment
         run: |
           sudo apt-get update
           sudo apt-get install -y xorriso dpkg-dev curl gnupg syslinux-utils
 
-      # Step 3: Download the Debian ISO
+      # Step 4: Download the Debian ISO
       - name: Download Debian ISO
         run: |
-          wget https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.8.0-amd64-netinst.iso
+          wget ${{ env.DEBIAN_ISO_URL }} -O ${{ env.DEBIAN_ISO_NAME }}
 
-      # Step 4: Build local Proxmox repository
+      # Step 5: Build local Proxmox repository
       - name: Build Proxmox offline repository
         run: |
           # Configure Proxmox repository
@@ -48,12 +55,12 @@ jobs:
           echo "Downloaded Proxmox packages:"
           ls -lh pve/
 
-      # Step 5: Build the custom ISO
+      # Step 6: Build the custom ISO
       - name: Build custom ISO
         run: |
           # Unpack and prepare the base ISO
           mkdir -p temp
-          mount -o loop debian-12.7.0-amd64-netinst.iso temp
+          mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp
           cp -a temp/. iso
           chmod -R 644 iso
           umount temp
@@ -81,7 +88,7 @@ jobs:
           # Make ISO hybrid for both BIOS and UEFI boot
           isohybrid --uefi proxmox_custom.iso
 
-      # Step 6: Verify the custom ISO
+      # Step 7: Verify the custom ISO
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
@@ -90,10 +97,10 @@ jobs:
           ls -lh mnt/pve/
           sudo umount mnt
 
-      # Step 7: Release the custom ISO
+      # Step 8: Release the custom ISO
       - uses: ncipollo/release-action@v1
         with:
           commit: "main"
           name: "Download ISO"
-          tag: "12.7.0"
+          tag: "${{ env.DEBIAN_VERSION }}"
           artifacts: "proxmox_custom.iso"
