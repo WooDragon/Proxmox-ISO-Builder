@@ -2,7 +2,6 @@
 
 set -e
 
-# Parameters
 DEBIAN_ISO="$1"
 OUTPUT_ISO="$2"
 
@@ -14,50 +13,53 @@ fi
 echo "[INFO] Debian ISO: $DEBIAN_ISO"
 echo "[INFO] Output ISO: $OUTPUT_ISO"
 
-# Step 1: Prepare directories
-rm -rf iso pve dependencies.txt
-mkdir -p iso pve
+# Step 1: Prepare working directories
+mkdir -p temp iso pve
 
-# Step 2: Extract the Debian ISO using bsdtar
-echo "[INFO] Extracting Debian ISO..."
-bsdtar -C iso -xf "$DEBIAN_ISO"
+# Step 2: Mount the Debian ISO to extract its contents
+echo "[INFO] Mounting Debian ISO..."
+mount -o loop "$DEBIAN_ISO" temp
+cp -a temp/. iso
+chmod -R 644 iso
+umount temp
 
-# Step 3: Configure Proxmox VE repo & download packages
-echo "[INFO] Setting up Proxmox repository..."
+# Step 3: Download Proxmox VE packages
+echo "[INFO] Adding Proxmox repo & downloading packages..."
 echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
-curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
+  > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+
 apt-get update
 
-# Step 4: Collect proxmox-ve dependency list
-echo "[INFO] Collecting proxmox-ve dependencies..."
+# Step 4: Gather Proxmox dependencies with apt-rdepends
+echo "[INFO] Gathering Proxmox dependencies with apt-rdepends..."
 apt-rdepends proxmox-ve | grep -v "^ " | sort -u > dependencies.txt
 
-# Step 5: Download .deb packages into local pve/ folder
-echo "[INFO] Downloading packages..."
+# Step 5: Download all packages to pve/ folder
 while read -r pkg; do
-  echo "  -> $pkg"
-  apt-get download "$pkg" || echo "[WARN] Failed to download $pkg, skipping."
+  echo "[INFO] Downloading $pkg ..."
+  apt-get download "$pkg" || echo "[WARN] Failed to download $pkg, skip."
 done < dependencies.txt
 
-# Step 6: Create local repository (dpkg-scanpackages)
-cd pve
+# Generate Packages index
+echo "[INFO] Generating local Packages index..."
+cd pve || exit 1
 dpkg-scanpackages . > Packages
 gzip -9c Packages > Packages.gz
 cd ..
 
-# Step 7: Copy local repository and preseed into ISO
-echo "[INFO] Copying local repo and preseed..."
+# Step 6: Copy local repository & preseed file into ISO
+echo "[INFO] Copying pve repo & preseed..."
 cp preseed.cfg iso/
 cp -r pve iso/
 
-# Step 8: Modify bootloader to use preseed automatically
-#   例如在 isolinux/txt.cfg 与 grub.cfg 中追加: file=/cdrom/preseed.cfg
-echo "[INFO] Modifying bootloader config..."
+# Step 7: Modify bootloader for automated install
+echo "[INFO] Patching bootloader for automated install..."
 sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" \
   iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
-# Step 9: Build the custom ISO using xorriso
-echo "[INFO] Building custom ISO with xorriso..."
+# Step 8: Build the custom ISO with xorriso
+echo "[INFO] Building the custom ISO..."
 xorriso \
   -outdev "$OUTPUT_ISO" \
   -volid "Proxmox_Custom" \
@@ -70,12 +72,12 @@ xorriso \
   -boot_image any efi_path=boot/grub/efi.img \
   -boot_image isolinux partition_entry=gpt_basdat
 
-# Step 10: Make it hybrid for BIOS/UEFI
-echo "[INFO] Making ISO hybrid..."
+# Step 9: Make it hybrid (BIOS & UEFI)
+echo "[INFO] Converting to hybrid ISO..."
 isohybrid --uefi "$OUTPUT_ISO"
 
 # Cleanup
-echo "[INFO] Cleanup..."
-rm -rf iso pve dependencies.txt
+echo "[INFO] Cleanup working directories..."
+rm -rf temp iso pve dependencies.txt
 
-echo "[SUCCESS] Custom ISO created: $OUTPUT_ISO"
+echo "[INFO] Custom ISO created successfully: $OUTPUT_ISO"
