@@ -42,15 +42,13 @@ jobs:
           echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" | sudo tee /etc/apt/sources.list.d/pve-install-repo.list
           curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg | sudo tee /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg > /dev/null
           
-          # Create directory for offline repository
-          mkdir -p pve
-          
-          # Download required Proxmox packages with sudo
+          # Update APT and download required Proxmox packages
           sudo apt-get update
-          sudo apt-get download -o Dir::Cache="./pve" proxmox-ve postfix open-iscsi
+          sudo apt-get download proxmox-ve postfix open-iscsi
 
-          # Change ownership to runner user
-          sudo chown -R $(whoami):$(whoami) ./pve
+          # Move downloaded packages to a dedicated directory
+          mkdir -p pve
+          mv /var/cache/apt/archives/*.deb ./pve/
 
           # Generate Packages and Packages.gz for the local repository
           cd pve
@@ -96,7 +94,7 @@ jobs:
           # Make ISO hybrid for both BIOS and UEFI boot
           isohybrid --uefi proxmox_custom.iso
 
-      # Step 8: Verify the custom ISO
+      # Step 8: Verify the custom ISO contents
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
