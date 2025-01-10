@@ -43,67 +43,13 @@ jobs:
             exit 1
           fi
 
-      # Step 6: Build local Proxmox repository
-      - name: Build Proxmox offline repository
-        run: |
-          # Configure Proxmox repository
-          echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" | sudo tee /etc/apt/sources.list.d/pve-install-repo.list
-          curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg | sudo tee /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg > /dev/null
-
-          # Update APT and download required Proxmox packages
-          sudo apt-get update
-          apt-get download proxmox-ve postfix open-iscsi
-
-          # Create the local repository directory
-          mkdir -p pve
-
-          # Move downloaded packages from the current directory to the local repository
-          mv *.deb ./pve/
-
-          # Generate Packages and Packages.gz for the local repository
-          cd pve
-          dpkg-scanpackages . > Packages
-          gzip -9c Packages > Packages.gz
-          cd ..
-
-          # Verify the downloaded files
-          echo "Downloaded Proxmox packages:"
-          ls -lh pve/
-
-      # Step 7: Build the custom ISO
+      # Step 6: Build the custom ISO using a script
       - name: Build custom ISO
         run: |
-          # Unpack and prepare the base ISO
-          mkdir -p temp
-          sudo mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp
-          cp -a temp/. iso
-          sudo chmod -R 644 iso
-          sudo umount temp
+          chmod +x create_ISO.bash
+          ./create_ISO.bash ${{ env.DEBIAN_ISO_NAME }} proxmox_custom.iso
 
-          # Copy the offline repository and preseed file into the ISO
-          sudo cp preseed.cfg ./iso
-          sudo cp -r pve ./iso
-
-          # Update boot menu to include the preseed configuration
-          sudo sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
-
-          # Build the custom ISO
-          sudo xorriso \
-            -outdev "proxmox_custom.iso" \
-            -volid "Proxmox_Custom" \
-            -padding 0 \
-            -compliance no_emul_toc \
-            -map "./iso" / \
-            -chmod 0755 / -- \
-            -boot_image isolinux dir=/isolinux \
-            -boot_image grub grub2_path=/boot/grub/efi.img \
-            -boot_image any efi_path=boot/grub/efi.img \
-            -boot_image isolinux partition_entry=gpt_basdat
-
-          # Make ISO hybrid for both BIOS and UEFI boot
-          sudo isohybrid --uefi proxmox_custom.iso
-
-      # Step 8: Verify the custom ISO contents
+      # Step 7: Verify the custom ISO contents
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
@@ -112,7 +58,7 @@ jobs:
           ls -lh mnt/pve/
           sudo umount mnt
 
-      # Step 9: Release the custom ISO
+      # Step 8: Release the custom ISO
       - uses: ncipollo/release-action@v1
         with:
           commit: "main"
