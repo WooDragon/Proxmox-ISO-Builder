@@ -47,7 +47,7 @@ jobs:
       - name: Build custom ISO
         run: |
           chmod +x create_ISO.bash
-          ./create_ISO.bash ${{ env.DEBIAN_ISO_NAME }} proxmox_custom.iso
+          sudo ./create_ISO.bash ${{ env.DEBIAN_ISO_NAME }} proxmox_custom.iso
 
       # Step 7: Verify the custom ISO contents
       - name: Verify custom ISO contents
