@@ -26,8 +26,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y \
-            xorriso dpkg-dev curl wget gnupg syslinux-utils apt-rdepends \
-            mount
+            xorriso dpkg-dev curl gnupg syslinux-utils apt-rdepends wget mount
 
       # Step 3: Set version variables
       - name: Set version variables
@@ -46,18 +45,18 @@ jobs:
       # Step 5: Download the Debian ISO
       - name: Download Debian ISO
         run: |
-          wget -q --show-progress $DEBIAN_ISO_URL -O $DEBIAN_ISO_NAME
+          wget -q $DEBIAN_ISO_URL -O $DEBIAN_ISO_NAME
           ls -lh $DEBIAN_ISO_NAME
           if [ ! -s "${DEBIAN_ISO_NAME}" ]; then
             echo "Error: ISO file not downloaded or empty."
             exit 1
           fi
 
-      # Step 6: Make script executable & run create_ISO.sh inside container
+      # Step 6: Make script executable & run create_ISO.bash inside container
       - name: Build custom ISO
         run: |
-          chmod +x create_ISO.sh
-          ./create_ISO.sh "$DEBIAN_ISO_NAME" proxmox_custom.iso
+          chmod +x create_ISO.bash
+          ./create_ISO.bash "$DEBIAN_ISO_NAME" proxmox_custom.iso
 
       # Step 7: Verify the custom ISO contents (optional)
       - name: Verify custom ISO contents
