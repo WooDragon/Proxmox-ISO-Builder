@@ -14,7 +14,7 @@ jobs:
         run: |
           echo "DEBIAN_VERSION=12.8.0" >> $GITHUB_ENV
 
-      # Step 2: Set dependent variables
+      # Step 2: Set ISO-related variables
       - name: Set ISO-related variables
         run: |
           echo "DEBIAN_ISO_NAME=debian-${DEBIAN_VERSION}-amd64-netinst.iso" >> $GITHUB_ENV
@@ -28,14 +28,30 @@ jobs:
       - name: Prepare environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y xorriso dpkg-dev curl gnupg syslinux-utils
+          sudo apt-get install -y xorriso dpkg-dev curl gnupg syslinux-utils mount
 
       # Step 5: Download the Debian ISO
       - name: Download Debian ISO
         run: |
           wget ${{ env.DEBIAN_ISO_URL }} -O ${{ env.DEBIAN_ISO_NAME }}
 
-      # Step 6: Build local Proxmox repository
+      # Step 6: Verify the downloaded ISO
+      - name: Verify downloaded ISO
+        run: |
+          file ${{ env.DEBIAN_ISO_NAME }}
+          ls -lh ${{ env.DEBIAN_ISO_NAME }}
+
+      # Step 7: Unpack and prepare the base ISO
+      - name: Unpack and prepare the base ISO
+        run: |
+          mkdir -p temp
+          sudo mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp || { dmesg | tail -n 20; exit 1; }
+          mkdir -p iso
+          cp -a temp/. iso
+          chmod -R 644 iso
+          sudo umount temp
+
+      # Step 8: Build local Proxmox repository
       - name: Build Proxmox offline repository
         run: |
           # Configure Proxmox repository
@@ -47,40 +63,26 @@ jobs:
           apt-get download proxmox-ve postfix open-iscsi
 
           # Create the local repository directory
-          mkdir -p pve
+          mkdir -p iso/pve
 
-          # Move downloaded packages from the current directory to the local repository
-          mv *.deb ./pve/
+          # Move downloaded packages to ISO's repository directory
+          mv *.deb iso/pve/
 
           # Generate Packages and Packages.gz for the local repository
-          cd pve
+          cd iso/pve
           dpkg-scanpackages . > Packages
           gzip -9c Packages > Packages.gz
-          cd ..
+          cd ../../
 
-          # Verify the downloaded files
-          echo "Downloaded Proxmox packages:"
-          ls -lh pve/
-
-
-      # Step 7: Build the custom ISO
-      - name: Build custom ISO
+      # Step 9: Copy preseed file and modify boot menu
+      - name: Copy preseed file and modify boot menu
         run: |
-          # Unpack and prepare the base ISO
-          mkdir -p temp
-          sudo mount -o loop ${{ env.DEBIAN_ISO_NAME }} temp
-          cp -a temp/. iso
-          chmod -R 644 iso
-          sudo umount temp
-
-          # Copy the offline repository and preseed file into the ISO
           cp preseed.cfg ./iso
-          cp -r pve ./iso
-
-          # Update boot menu to include the preseed configuration
           sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
-          # Build the custom ISO
+      # Step 10: Build the custom ISO
+      - name: Build custom ISO
+        run: |
           xorriso \
             -outdev "proxmox_custom.iso" \
             -volid "Proxmox_Custom" \
@@ -96,7 +98,7 @@ jobs:
           # Make ISO hybrid for both BIOS and UEFI boot
           isohybrid --uefi proxmox_custom.iso
 
-      # Step 8: Verify the custom ISO contents
+      # Step 11: Verify the custom ISO contents
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
@@ -105,7 +107,7 @@ jobs:
           ls -lh mnt/pve/
           sudo umount mnt
 
-      # Step 9: Release the custom ISO
+      # Step 12: Release the custom ISO
       - uses: ncipollo/release-action@v1
         with:
           commit: "main"
