@@ -13,8 +13,8 @@ jobs:
       - name: Set version variables
         run: |
           echo "DEBIAN_VERSION=12.8.0" >> $GITHUB_ENV
-          echo "DEBIAN_ISO_NAME=debian-${{ env.DEBIAN_VERSION }}-amd64-netinst.iso" >> $GITHUB_ENV
-          echo "DEBIAN_ISO_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/${{ env.DEBIAN_ISO_NAME }}" >> $GITHUB_ENV
+          echo "DEBIAN_ISO_NAME=debian-$DEBIAN_VERSION-amd64-netinst.iso" >> $GITHUB_ENV
+          echo "DEBIAN_ISO_URL=https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/$DEBIAN_ISO_NAME" >> $GITHUB_ENV
 
       # Step 2: Checkout the repository
       - name: Checkout code
