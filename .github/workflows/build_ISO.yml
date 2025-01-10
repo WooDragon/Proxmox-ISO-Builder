@@ -88,7 +88,7 @@ jobs:
           sudo sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
           # Build the custom ISO
-          xorriso \
+          sudo xorriso \
             -outdev "proxmox_custom.iso" \
             -volid "Proxmox_Custom" \
             -padding 0 \
@@ -101,7 +101,7 @@ jobs:
             -boot_image isolinux partition_entry=gpt_basdat
 
           # Make ISO hybrid for both BIOS and UEFI boot
-          isohybrid --uefi proxmox_custom.iso
+          sudo isohybrid --uefi proxmox_custom.iso
 
       # Step 8: Verify the custom ISO contents
       - name: Verify custom ISO contents
