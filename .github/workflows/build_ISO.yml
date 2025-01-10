@@ -4,12 +4,15 @@ on:
 
 jobs:
   build:
-    # 使用 GitHub Actions 的 Ubuntu runner + Debian容器
-    # 注意：若需要更高权限(例如挂载)，还要确认是否可行
+    # 1) 运行环境：使用 GitHub 提供的 Ubuntu 宿主机
     runs-on: ubuntu-latest
+
+    # 2) 在指定容器中执行构建，这个容器基于 Debian
     container:
-      image: debian:bookworm
-      # privileged: true  # 若想在容器里执行 mount，需要启用特权(不建议/不一定可行)
+      image: debian:latest
+      # 允许在容器中 mount，需要 --privileged
+      options: --privileged
+
     permissions:
       contents: write
 
@@ -18,27 +21,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install required tools in the Debian container
+      # Step 2: Install dependencies in the Debian container
       - name: Install dependencies
         run: |
           apt-get update
-          # 安装需要的打包工具、下载工具等
           apt-get install -y \
-            xorriso dpkg-dev curl gnupg \
-            syslinux-utils apt-rdepends bsdtar wget
+            xorriso dpkg-dev curl gnupg syslinux-utils apt-rdepends \
+            mount
 
-      # Step 3: Set version variables (可选)
+      # Step 3: Set version variables
       - name: Set version variables
         run: |
           echo "DEBIAN_VERSION=12.8.0" >> $GITHUB_ENV
 
-      # Step 4: Fetch latest Debian netinst ISO URL
+      # Step 4: Determine ISO URL and file name dynamically
       - name: Fetch latest ISO URL
         run: |
           ISO_BASE_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/"
           ISO_FILE=$(curl -s $ISO_BASE_URL | grep -oP 'href="debian-[0-9\.]+-amd64-netinst.iso"' | head -n 1 | cut -d'"' -f2)
           echo "DEBIAN_ISO_NAME=$ISO_FILE" >> $GITHUB_ENV
           echo "DEBIAN_ISO_URL=${ISO_BASE_URL}${ISO_FILE}" >> $GITHUB_ENV
+        shell: bash
 
       # Step 5: Download the Debian ISO
       - name: Download Debian ISO
@@ -46,24 +49,24 @@ jobs:
           wget -q --show-progress $DEBIAN_ISO_URL -O $DEBIAN_ISO_NAME
           ls -lh $DEBIAN_ISO_NAME
           if [ ! -s "${DEBIAN_ISO_NAME}" ]; then
-            echo "Error: ISO file not downloaded or is empty."
+            echo "Error: ISO file not downloaded or empty."
             exit 1
           fi
 
-      # Step 6: Make create_ISO.sh executable & run it
+      # Step 6: Make script executable & run create_ISO.sh inside container
       - name: Build custom ISO
         run: |
           chmod +x create_ISO.sh
           ./create_ISO.sh "$DEBIAN_ISO_NAME" proxmox_custom.iso
 
-      # Step 7: (Optional) Verify the custom ISO contents
-      # 注意：若没有启用 privileged 容器，无法 mount，示例用 bsdtar/7z 查看
-      - name: Verify the custom ISO contents
+      # Step 7: Verify the custom ISO contents (optional)
+      - name: Verify custom ISO contents
         run: |
-          mkdir -p tmpiso
-          bsdtar -tf proxmox_custom.iso | grep pve || true
-          # 或者只简单查看文件大小
-          ls -lh proxmox_custom.iso
+          mkdir -p mnt
+          mount -o loop proxmox_custom.iso mnt
+          echo "ISO contents in /pve directory:"
+          ls -lh mnt/pve/
+          umount mnt
 
       # Step 8: Release the custom ISO
       - uses: ncipollo/release-action@v1
