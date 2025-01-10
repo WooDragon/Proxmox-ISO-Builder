@@ -26,7 +26,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y \
-            xorriso dpkg-dev curl gnupg syslinux-utils apt-rdepends \
+            xorriso dpkg-dev curl wget gnupg syslinux-utils apt-rdepends \
             mount
 
       # Step 3: Set version variables
