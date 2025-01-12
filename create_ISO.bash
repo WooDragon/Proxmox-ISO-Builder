@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -e
+set -e  # Exit immediately if a command exits with a non-zero status
+set -u  # Treat unset variables as an error and exit immediately
+set -o pipefail  # Prevent errors in a pipeline from being masked
 
 DEBIAN_ISO="$1"
 OUTPUT_ISO="$2"
@@ -26,32 +28,34 @@ umount temp
 # Step 3: Add Proxmox repo and download packages
 echo "[INFO] Adding Proxmox repo and downloading packages..."
 echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
-curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
-  > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
-
+curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
 apt-get update
 
-# Step 4: Gather Proxmox dependencies with apt-rdepends
-echo "[INFO] Gathering Proxmox dependencies with apt-rdepends..."
+# Step 4: Gather Proxmox dependencies
+echo "[INFO] Gathering Proxmox dependencies..."
 apt-rdepends proxmox-ve | grep -v "^ " | sort -u > dependencies.txt
 
-echo "[INFO] Downloading packages to ./pve ..."
-while read -r pkg; do
-  echo "[INFO] Downloading $pkg ..."
-  apt-get download "$pkg" -o=dir::cache="./pve/" || echo "[WARN] Failed to download $pkg, skipping."
-done < dependencies.txt
+# Step 5: Download .deb packages to ./pve
+echo "[INFO] Downloading packages to ./pve..."
+mkdir -p pve
+cd pve
 
-# Ensure .deb files are downloaded
-if [ "$(ls -A ./pve/*.deb 2>/dev/null)" ]; then
-  echo "[INFO] .deb files found in ./pve/"
+while read -r pkg; do
+  echo "[INFO] Downloading $pkg..."
+  if ! apt-get download "$pkg"; then
+    echo "[WARN] Failed to download $pkg, skipping."
+  fi
+done < ../dependencies.txt
+
+if [ "$(ls -A *.deb 2>/dev/null)" ]; then
+  echo "[INFO] .deb files downloaded successfully."
 else
-  echo "[ERROR] No .deb files found in ./pve/! Check the download step."
+  echo "[ERROR] No .deb files downloaded! Check your repository configuration."
   exit 1
 fi
 
-# Step 5: Generate Packages and Packages.gz for local repository
+# Generate Packages and Packages.gz for local repository
 echo "[INFO] Generating local repository metadata..."
-cd pve || exit 1
 dpkg-scanpackages . > Packages
 gzip -9c Packages > Packages.gz
 cd ..
@@ -87,4 +91,6 @@ isohybrid --uefi "$OUTPUT_ISO"
 # Cleanup
 echo "[INFO] Cleaning up temporary files..."
 rm -rf temp iso dependencies.txt
-# Note: Do not delete pve/ directory
+# Note: Do not delete pve/ directory, it contains cached .deb files
+
+echo "[INFO] Custom ISO created successfully: $OUTPUT_ISO"
