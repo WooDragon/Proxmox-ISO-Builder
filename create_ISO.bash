@@ -64,7 +64,7 @@ cp -r pve iso/
 
 # Step 6: 修改启动菜单，启用无人值守安装
 echo "[INFO] Modifying bootloader configuration for automated install..."
-sed -i "s+quiet+quiet auto=true priority=medium locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" \
+sed -i "s+quiet+quiet auto=true locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" \
   iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
 # Step 7: 使用 xorriso 制作新的 ISO
