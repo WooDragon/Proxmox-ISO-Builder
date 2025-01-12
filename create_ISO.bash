@@ -14,6 +14,9 @@ fi
 echo "[INFO] Debian ISO: $DEBIAN_ISO"
 echo "[INFO] Output ISO: $OUTPUT_ISO"
 
+# 记录脚本的起始目录
+BASE_DIR=$(pwd)
+
 # Step 1: Prepare working directories
 WORKDIR=$(mktemp -d)
 mkdir -p "$WORKDIR/iso" "$WORKDIR/temp" "$WORKDIR/pve"
@@ -52,11 +55,11 @@ echo "[INFO] Generating local repository metadata..."
 cd "$WORKDIR/pve"
 dpkg-scanpackages . > Packages
 gzip -9c Packages > Packages.gz
-cd "$WORKDIR"
+cd "$BASE_DIR"  # 返回脚本起始目录
 
 # Step 5: Copy local repository & preseed file into ISO
 echo "[INFO] Copying PVE repository and preseed configuration to ISO..."
-cp preseed.cfg "$WORKDIR/iso/"
+cp "$BASE_DIR/preseed.cfg" "$WORKDIR/iso/"  # 使用绝对路径找到 preseed.cfg
 cp -r "$WORKDIR/pve" "$WORKDIR/iso/"
 
 # Step 6: Modify bootloader for automated install
