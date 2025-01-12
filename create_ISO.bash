@@ -22,7 +22,6 @@ mkdir -p temp iso pve
 echo "[INFO] Mounting and extracting Debian ISO..."
 mount -o loop "$DEBIAN_ISO" temp
 cp -a temp/. iso
-chmod -R 644 iso
 umount temp
 
 # Step 3: 配置 Proxmox 仓库并下载所有依赖包
