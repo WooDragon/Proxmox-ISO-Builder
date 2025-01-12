@@ -23,8 +23,8 @@ cp -a temp/. iso
 chmod -R 644 iso
 umount temp
 
-# Step 3: Download Proxmox VE packages
-echo "[INFO] Adding Proxmox repo & downloading packages..."
+# Step 3: Add Proxmox repo and download packages
+echo "[INFO] Adding Proxmox repo and downloading packages..."
 echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" > /etc/apt/sources.list.d/pve-install-repo.list
 curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
   > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
@@ -35,21 +35,29 @@ apt-get update
 echo "[INFO] Gathering Proxmox dependencies with apt-rdepends..."
 apt-rdepends proxmox-ve | grep -v "^ " | sort -u > dependencies.txt
 
-# Step 5: Download all packages to pve/ folder
+echo "[INFO] Downloading packages to ./pve ..."
 while read -r pkg; do
   echo "[INFO] Downloading $pkg ..."
-  apt-get download "$pkg" || echo "[WARN] Failed to download $pkg, skip."
+  apt-get download "$pkg" -o=dir::cache="./pve/" || echo "[WARN] Failed to download $pkg, skipping."
 done < dependencies.txt
 
-# Generate Packages index
-echo "[INFO] Generating local Packages index..."
+# Ensure .deb files are downloaded
+if [ "$(ls -A ./pve/*.deb 2>/dev/null)" ]; then
+  echo "[INFO] .deb files found in ./pve/"
+else
+  echo "[ERROR] No .deb files found in ./pve/! Check the download step."
+  exit 1
+fi
+
+# Step 5: Generate Packages and Packages.gz for local repository
+echo "[INFO] Generating local repository metadata..."
 cd pve || exit 1
 dpkg-scanpackages . > Packages
 gzip -9c Packages > Packages.gz
 cd ..
 
 # Step 6: Copy local repository & preseed file into ISO
-echo "[INFO] Copying pve repo & preseed..."
+echo "[INFO] Copying pve repo & preseed to ISO..."
 cp preseed.cfg iso/
 cp -r pve iso/
 
@@ -77,7 +85,6 @@ echo "[INFO] Converting to hybrid ISO..."
 isohybrid --uefi "$OUTPUT_ISO"
 
 # Cleanup
-echo "[INFO] Cleanup working directories..."
-rm -rf temp iso pve dependencies.txt
-
-echo "[INFO] Custom ISO created successfully: $OUTPUT_ISO"
+echo "[INFO] Cleaning up temporary files..."
+rm -rf temp iso dependencies.txt
+# Note: Do not delete pve/ directory
