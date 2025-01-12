@@ -67,7 +67,8 @@ cp -r pve iso/
 
 # Step 7: Modify bootloader for automated install
 echo "[INFO] Patching bootloader for automated install..."
-sed -i "s+quiet+quiet priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" \
+
+sed -i "s+quiet+quiet auto=true priority=medium locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg+g" \
   iso/isolinux/txt.cfg iso/boot/grub/grub.cfg
 
 # Step 8: Build the custom ISO with xorriso
