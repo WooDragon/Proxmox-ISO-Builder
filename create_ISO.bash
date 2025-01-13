@@ -45,7 +45,7 @@ cat <<EOF >> "$WORKDIR/iso/isolinux/txt.cfg"
 label auto
   menu label ^Automated Installation
   kernel /install.amd/vmlinuz
-  append initrd=/install.amd/initrd.gz auto=true priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg --
+  append initrd=/install.amd/initrd.gz auto=true priority=medium locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg --
 EOF
 
 # UEFI: grub.cfg
@@ -54,7 +54,7 @@ cat <<EOF >> "$WORKDIR/iso/boot/grub/grub.cfg"
 
 menuentry "Automated Installation" {
     set gfxpayload=keep
-    linux /install.amd/vmlinuz auto=true priority=high locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg --
+    linux /install.amd/vmlinuz auto=true priority=medium locale=en_US.UTF-8 keymap=us file=/cdrom/preseed.cfg --
     initrd /install.amd/initrd.gz
 }
 EOF
