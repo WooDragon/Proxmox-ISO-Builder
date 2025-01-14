@@ -37,8 +37,8 @@ apt-get install --download-only -y proxmox-ve postfix open-iscsi chrony
 #       先获取 standard 任务下的所有包名:
 STANDARD_PACKAGES=$(tasksel --task-packages standard)
 
-# (2.3) 下载 standard 任务以及 openssh-server, curl, gnupg
-apt-get install --download-only --reinstall -y $STANDARD_PACKAGES openssh-server curl gnupg
+# (2.3) 下载 standard 任务以及 openssh-server, curl, gnupg 等附加包
+apt-get install --download-only --reinstall -y $STANDARD_PACKAGES openssh-server curl gnupg tasksel pkgsel
 
 # (2.4) 把所有下载好的 .deb 都拷进 WORKDIR/pve
 cp /var/cache/apt/archives/*.deb "$WORKDIR/pve/" || true
