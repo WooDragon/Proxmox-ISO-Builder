@@ -37,8 +37,22 @@ apt-get install --download-only -y proxmox-ve postfix open-iscsi chrony
 #       先获取 standard 任务下的所有包名:
 STANDARD_PACKAGES=$(tasksel --task-packages standard)
 
-# (2.3) 下载 standard 任务以及 openssh-server, curl, gnupg 等附加包
-apt-get install --download-only --reinstall -y $STANDARD_PACKAGES openssh-server curl gnupg tasksel pkgsel
+# (2.3) 下载 standard 任务以及部分附加包 (不含 curl)
+#       注意这里先不包含 curl，让我们后面单独处理它。
+apt-get install --download-only --reinstall -y \
+  $STANDARD_PACKAGES \
+  openssh-server \
+  gnupg \
+  tasksel 
+
+# (2.4) 单独处理 curl: 先列出依赖, 再 --download-only --reinstall
+echo "==== Listing curl dependencies (Depends:) ===="
+# 利用 apt-cache depends 只取 “Depends:” 字段
+CURL_DEPS=$(apt-cache depends curl | sed -n '/Depends:/s/.*Depends: //p')
+echo "curl dependencies: $CURL_DEPS"
+
+# 现在下载 curl 及其依赖
+apt-get install --download-only --reinstall -y $CURL_DEPS curl
 
 # (2.4) 把所有下载好的 .deb 都拷进 WORKDIR/pve
 cp /var/cache/apt/archives/*.deb "$WORKDIR/pve/" || true
