@@ -75,7 +75,8 @@ ALL_PVE_DEPS+=" proxmox-ve"
 
 echo "=== Downloading all dependencies (ignoring errors) ==="
 cd /var/cache/apt/archives/
-
+sudo chmod -R o+rwx /var/cache/apt/archives
+sudo chown -R _apt:root /var/cache/apt/archives
 # 逐个下载依赖，忽略错误
 for pkg in $ALL_PVE_DEPS; do
   echo "Downloading $pkg..."
