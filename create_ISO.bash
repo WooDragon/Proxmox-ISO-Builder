@@ -75,8 +75,8 @@ ALL_PVE_DEPS+=" proxmox-ve"
 
 # 缓存目录和权限设置
 CACHE_DIR="/var/cache/apt/archives"
-chown -R _apt:root /var/cache/apt/archives/
-chmod -R 755 /var/cache/apt/archives/
+chown -R _apt:root $CACHE_DIR
+chmod -R 755 $CACHE_DIR
 
 echo "=== Downloading all dependencies in batch (ignoring errors) ==="
 echo "$ALL_PVE_DEPS" | xargs -n 1 -P 4 -I {} bash -c "apt-get download -o dir::cache=\"$CACHE_DIR\" {} || echo 'Failed to download {}'"
