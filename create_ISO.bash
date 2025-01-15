@@ -40,14 +40,6 @@ apt-get install --download-only -y postfix open-iscsi chrony
 #       先获取 standard 任务下的所有包名:
 STANDARD_PACKAGES=$(tasksel --task-packages standard)
 
-# (2.3) 下载 standard 任务以及部分附加包 (不含 curl)
-#       注意这里先不包含 curl，让我们后面单独处理它。
-apt-get install --download-only --reinstall -y \
-  $STANDARD_PACKAGES \
-  openssh-server \
-  gnupg \
-  tasksel 
-
 # (2.3) 针对 curl 做同样处理（先拿到依赖，再 reinstall）
 echo "==== Listing dependencies for curl using apt-rdepends ===="
 # 使用 apt-rdepends 递归列出所有依赖
@@ -63,15 +55,15 @@ else
   apt-get install --download-only --reinstall -y curl
 fi
 
-# (2.4) 使用 apt-rdepends 处理 proxmox-ve
+# (2.4) 使用 apt-rdepends 处理 proxmox-ve openssh-server gnupg tasksel
 echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
-ALL_PVE_DEPS=$(apt-rdepends proxmox-ve \
+ALL_PVE_DEPS=$(apt-rdepends proxmox-ve openssh-server gnupg tasksel \
   | grep -v '^ ' \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-# 将 proxmox-ve 本身加入依赖列表
-ALL_PVE_DEPS+=" proxmox-ve"
+# 将 proxmox-ve openssh-server gnupg tasksel 本身加入依赖列表
+ALL_PVE_DEPS+=" proxmox-ve openssh-server gnupg tasksel"
 
 # 缓存目录和权限设置
 ORIGINAL_DIR=$(pwd)
