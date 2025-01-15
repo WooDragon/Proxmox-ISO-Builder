@@ -74,12 +74,16 @@ ALL_PVE_DEPS=$(apt-rdepends proxmox-ve \
 ALL_PVE_DEPS+=" proxmox-ve"
 
 # 缓存目录和权限设置
+ORIGINAL_DIR=$(pwd)
 CACHE_DIR="/var/cache/apt/archives"
 chown -R _apt:root $CACHE_DIR
 chmod -R 755 $CACHE_DIR
+cd "$CACHE_DIR"
 
 echo "=== Downloading all dependencies in batch (ignoring errors) ==="
-echo "$ALL_PVE_DEPS" | xargs -n 1 -P 4 -I {} bash -c "apt-get download -o dir::cache=\"$CACHE_DIR\" {} || echo 'Failed to download {}'"
+echo "$ALL_PVE_DEPS" | xargs -n 1 -P 4 -I {} bash -c "apt-get download {} || echo 'Failed to download {}'"
+cd "$ORIGINAL_DIR"
+echo "=== All dependencies downloaded to $CACHE_DIR ==="
 
 # (2.5) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
 echo "==== Copying downloaded packages to $WORKDIR/pve ===="
