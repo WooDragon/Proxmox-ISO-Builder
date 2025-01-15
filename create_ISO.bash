@@ -70,26 +70,19 @@ ALL_PVE_DEPS=$(apt-rdepends proxmox-ve \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-echo "=== Checking each dependency for installation candidate ==="
-REAL_PVE_DEPS=()
+# 将 proxmox-ve 本身加入依赖列表
+ALL_PVE_DEPS+=" proxmox-ve"
 
+echo "=== Downloading all dependencies (ignoring errors) ==="
+cd /var/cache/apt/archives/
+
+# 逐个下载依赖，忽略错误
 for pkg in $ALL_PVE_DEPS; do
-  # 查询此包是否有可用候选
-  CANDIDATE_LINE=$(apt-cache policy "$pkg" | grep 'Candidate:')
-  # 如果是 Candidate: (none) 或者空，就跳过
-  if [[ "$CANDIDATE_LINE" == *"(none)"* ]] || [[ -z "$CANDIDATE_LINE" ]]; then
-    echo "Skipping $pkg (no installation candidate)"
-  else
-    echo "Will include $pkg"
-    REAL_PVE_DEPS+=("$pkg")
-  fi
+  echo "Downloading $pkg..."
+  apt-get download "$pkg" || echo "Failed to download $pkg, skipping."
 done
 
-# 组合成命令行参数
-INSTALL_PVE_DEPS="${REAL_PVE_DEPS[*]} proxmox-ve"
-
-echo "=== Installing (download-only) these packages: $INSTALL_PVE_DEPS ==="
-apt-get install --download-only --reinstall -y $INSTALL_PVE_DEPS
+echo "=== All available dependencies have been downloaded ==="
 
 # (2.5) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
 echo "==== Copying downloaded packages to $WORKDIR/pve ===="
