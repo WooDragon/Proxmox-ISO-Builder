@@ -64,18 +64,20 @@ else
 fi
 
 # (2.4) 使用 apt-rdepends 处理 proxmox-ve
+echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
 ALL_PVE_DEPS=$(apt-rdepends proxmox-ve \
   | grep -v '^ ' \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-# 将 proxmox-ve 包本身也加上
+# 将 proxmox-ve 本身加入依赖列表
 ALL_PVE_DEPS+=" proxmox-ve"
 
-echo "=== Attempting to download all dependencies in one go ==="
+# 缓存目录
+CACHE_DIR="/var/cache/apt/archives"
 
-# 一次性下载所有包，如有包不可用也直接跳过
-apt-get download -o dir::cache="/var/cache/apt/archives" $ALL_PVE_DEPS || echo "Some packages may have failed to download, ignoring."
+echo "=== Downloading all dependencies in batch (ignoring errors) ==="
+echo "$ALL_PVE_DEPS" | xargs -n 1 -P 4 -I {} bash -c "apt-get download -o dir::cache=\"$CACHE_DIR\" {} || echo 'Failed to download {}'"
 
 # (2.5) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
 echo "==== Copying downloaded packages to $WORKDIR/pve ===="
