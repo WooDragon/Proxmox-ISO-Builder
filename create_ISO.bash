@@ -32,6 +32,39 @@ curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
 apt-get update
 apt-get install -y apt-rdepends
 
+# -----------------------------
+# (A) 函数: resolve_virtual_pkg
+#    用来把“虚拟包”映射成“真实包名”
+# -----------------------------
+resolve_virtual_pkg() {
+  local pkg="$1"
+
+  # apt-cache show 能否找到真实的 "Package: $pkg"
+  if apt-cache show "$pkg" 2>/dev/null | grep -q "^Package: $pkg"; then
+    # 说明它是一个真实存在的包，可直接返回
+    echo "$pkg"
+  else
+    # 尝试解析 "Reverse Provides"
+    # apt-cache showpkg $pkg 的格式中:
+    #   Reverse Provides:
+    #    perl  perlapi-5.36.0
+    # 意味着 perl 提供 perlapi-5.36.0
+    local providers
+    # 使用 awk 拿到 Reverse Provides 部分并提取第1列包名
+    providers=$(apt-cache showpkg "$pkg" 2>/dev/null \
+      | awk '/Reverse Provides:/{flag=1; next} /^$/{flag=0} flag {print $1}' \
+      | cut -d' ' -f1 \
+      | sort -u)
+
+    # 如果找到提供者，就输出，否则只能返回原包名(大概率下载会失败)
+    if [[ -n "$providers" ]]; then
+      echo "$providers"
+    else
+      echo "$pkg"
+    fi
+  fi
+}
+
 # (2.1) 下载几个必需的包（不包含 proxmox-ve） 
 #       包括 postfix, open-iscsi, chrony
 apt-get install --download-only -y postfix open-iscsi chrony
@@ -55,29 +88,41 @@ else
   apt-get install --download-only --reinstall -y curl
 fi
 
-# (2.4) 使用 apt-rdepends 处理 proxmox-ve openssh-server gnupg tasksel
+# (2.4) 用 apt-rdepends 处理 proxmox-ve, openssh-server, gnupg, tasksel
 echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
 ALL_PVE_DEPS=$(apt-rdepends proxmox-ve openssh-server gnupg tasksel \
   | grep -v '^ ' \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-# 将 proxmox-ve openssh-server gnupg tasksel 本身加入依赖列表
+# 把这4个包本身也加进去
 ALL_PVE_DEPS+=" proxmox-ve openssh-server gnupg tasksel"
 
-# 缓存目录和权限设置
+# (2.5) 下载所有依赖(含可能的虚拟包)前，先做“虚拟包 -> 真实包”转换
+RESOLVED_DEPS=""
+for pkg in $ALL_PVE_DEPS; do
+  # 解析可能的虚拟包
+  realpkgs=$(resolve_virtual_pkg "$pkg")
+  RESOLVED_DEPS+=" $realpkgs"
+done
+
+# (2.6) 批量下载
 ORIGINAL_DIR=$(pwd)
 CACHE_DIR="/var/cache/apt/archives"
-chown -R _apt:root $CACHE_DIR
-chmod -R 755 $CACHE_DIR
+chown -R _apt:root "$CACHE_DIR"
+chmod -R 755 "$CACHE_DIR"
 cd "$CACHE_DIR"
 
 echo "=== Downloading all dependencies in batch (ignoring errors) ==="
-echo "$ALL_PVE_DEPS" | xargs -n 1 -P 4 -I {} bash -c "apt-get download {} || echo 'Failed to download {}'"
+echo "Resolved packages: $RESOLVED_DEPS"
+for rp in $RESOLVED_DEPS; do
+  apt-get download "$rp" || echo "Failed to download $rp"
+done
+
 cd "$ORIGINAL_DIR"
 echo "=== All dependencies downloaded to $CACHE_DIR ==="
 
-# (2.5) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
+# (2.7) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
 echo "==== Copying downloaded packages to $WORKDIR/pve ===="
 cp /var/cache/apt/archives/*.deb "$WORKDIR/pve/" || true
 
