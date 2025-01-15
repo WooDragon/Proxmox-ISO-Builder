@@ -31,7 +31,7 @@ curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
 apt-get update
 
 # (2.1) 下载 Proxmox VE 核心包
-apt-get install --download-only -y proxmox-ve postfix open-iscsi chrony
+apt-get install --download-only -y postfix open-iscsi chrony
 
 # (2.2) 下载 “standard” 任务及附加包所需的 .deb
 #       先获取 standard 任务下的所有包名:
@@ -45,7 +45,7 @@ apt-get install --download-only --reinstall -y \
   gnupg \
   tasksel 
 
-# (2.4) 单独处理 curl: 先列出依赖, 再 --download-only --reinstall
+# (2.4) 单独处理 curl 和 proxmox-ve: 先列出依赖, 再 --download-only --reinstall
 echo "==== Listing curl dependencies (Depends:) ===="
 # 利用 apt-cache depends 只取 “Depends:” 字段
 CURL_DEPS=$(apt-cache depends curl | sed -n '/Depends:/s/.*Depends: //p')
@@ -53,6 +53,14 @@ echo "curl dependencies: $CURL_DEPS"
 
 # 现在下载 curl 及其依赖
 apt-get install --download-only --reinstall -y $CURL_DEPS curl
+
+echo "==== Listing proxmox-ve dependencies (Depends:) ===="
+# 利用 apt-cache depends 只取 “Depends:” 字段
+CURL_DEPS=$(apt-cache depends proxmox-ve | sed -n '/Depends:/s/.*Depends: //p')
+echo "proxmox-ve dependencies: $PVE_DEPS"
+
+# 现在下载 curl 及其依赖
+apt-get install --download-only --reinstall -y $PVE_DEPS curl
 
 # (2.4) 把所有下载好的 .deb 都拷进 WORKDIR/pve
 cp /var/cache/apt/archives/*.deb "$WORKDIR/pve/" || true
