@@ -28,9 +28,12 @@ echo "deb http://download.proxmox.com/debian/pve bookworm pve-no-subscription" >
 curl -fsSL https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg \
   > /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
 
+# 安装 apt-rdepends 工具（如果尚未安装）
 apt-get update
+apt-get install -y apt-rdepends
 
-# (2.1) 下载 Proxmox VE 核心包
+# (2.1) 下载几个必需的包（不包含 proxmox-ve） 
+#       包括 postfix, open-iscsi, chrony
 apt-get install --download-only -y postfix open-iscsi chrony
 
 # (2.2) 下载 “standard” 任务及附加包所需的 .deb
@@ -45,24 +48,38 @@ apt-get install --download-only --reinstall -y \
   gnupg \
   tasksel 
 
-# (2.4) 单独处理 curl 和 proxmox-ve: 先列出依赖, 再 --download-only --reinstall
-echo "==== Listing curl dependencies (Depends:) ===="
-# 利用 apt-cache depends 只取 “Depends:” 字段
-CURL_DEPS=$(apt-cache depends curl | sed -n '/Depends:/s/.*Depends: //p')
-echo "curl dependencies: $CURL_DEPS"
+# (2.3) 针对 curl 做同样处理（先拿到依赖，再 reinstall）
+echo "==== Listing dependencies for curl using apt-rdepends ===="
+# 使用 apt-rdepends 递归列出所有依赖
+CURL_DEPS=$(apt-rdepends curl \
+  | grep -vE '^ ' \
+  | grep -vE '^(Reading|Build\-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends)' \
+  | sort -u)
+echo "curl deps: $CURL_DEPS"
 
-# 现在下载 curl 及其依赖
-apt-get install --download-only --reinstall -y $CURL_DEPS curl
+if [[ -n "$CURL_DEPS" ]]; then
+  apt-get install --download-only --reinstall -y $CURL_DEPS curl
+else
+  apt-get install --download-only --reinstall -y curl
+fi
 
-echo "==== Listing proxmox-ve dependencies (Depends:) ===="
-# 利用 apt-cache depends 只取 “Depends:” 字段
-CURL_DEPS=$(apt-cache depends proxmox-ve | sed -n '/Depends:/s/.*Depends: //p')
-echo "proxmox-ve dependencies: $PVE_DEPS"
+# (2.4) 使用 apt-rdepends 处理 proxmox-ve（核心变化）
+echo "==== Listing dependencies for proxmox-ve using apt-rdepends ===="
+PVE_DEPS=$(apt-rdepends proxmox-ve \
+  | grep -vE '^ ' \
+  | grep -vE '^(Reading|Build\-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends)' \
+  | sort -u)
+echo "proxmox-ve deps: $PVE_DEPS"
 
-# 现在下载 curl 及其依赖
-apt-get install --download-only --reinstall -y $PVE_DEPS curl
+# 使用 --download-only --reinstall 下载所有依赖 + proxmox-ve 
+if [[ -n "$PVE_DEPS" ]]; then
+  apt-get install --download-only --reinstall -y $PVE_DEPS proxmox-ve
+else
+  apt-get install --download-only --reinstall -y proxmox-ve
+fi
 
-# (2.4) 把所有下载好的 .deb 都拷进 WORKDIR/pve
+# (2.5) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
+echo "==== Copying downloaded packages to $WORKDIR/pve ===="
 cp /var/cache/apt/archives/*.deb "$WORKDIR/pve/" || true
 
 # 生成离线仓库
