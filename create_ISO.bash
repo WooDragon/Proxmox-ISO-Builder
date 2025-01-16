@@ -88,15 +88,17 @@ else
   apt-get install --download-only --reinstall -y curl
 fi
 
-# (2.4) 用 apt-rdepends 处理 proxmox-default-kernel, proxmox-ve, openssh-server, gnupg, tasksel
-echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
-ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel \
+# (2.4) 并行化处理 proxmox-default-kernel, proxmox-ve, openssh-server, gnupg, tasksel
+echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends in parallel ==="
+PACKAGES="proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
+
+ALL_PVE_DEPS=$(echo "$PACKAGES" | xargs -n1 -P5 -I {} apt-rdepends {} \
   | grep -v '^ ' \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-# 把这4个包本身也加进去
-ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
+# 把这些包本身也加进去
+ALL_PVE_DEPS+=" $PACKAGES"
 
 # (2.5) 下载所有依赖(含可能的虚拟包)前，先做“虚拟包 -> 真实包”转换
 RESOLVED_DEPS=""
