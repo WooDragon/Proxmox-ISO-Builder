@@ -65,69 +65,35 @@ resolve_virtual_pkg() {
   fi
 }
 
-# (2.1) 下载几个必需的包（不包含 proxmox-ve） 
-#       包括 postfix, open-iscsi, chrony
-apt-get install --download-only -y postfix open-iscsi chrony
+export -f resolve_virtual_pkg
 
-# (2.2) 下载 “standard” 任务及附加包所需的 .deb
-#       先获取 standard 任务下的所有包名:
-STANDARD_PACKAGES=$(tasksel --task-packages standard)
-
-# (2.3) 针对 curl 做同样处理（先拿到依赖，再 reinstall）
-echo "==== Listing dependencies for curl using apt-rdepends ===="
-# 使用 apt-rdepends 递归列出所有依赖
-CURL_DEPS=$(apt-rdepends curl \
-  | grep -vE '^ ' \
-  | grep -vE '^(Reading|Build\-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends)' \
+# -----------------------------
+# (2.4) 用 apt-rdepends 处理 proxmox-default-kernel, proxmox-ve, openssh-server, gnupg, tasksel环节
+#    并行化 resolve_virtual_pkg 以加速镜像生成
+# -----------------------------
+echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
+ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel \
+  | grep -v '^ ' \
+  | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
-echo "curl deps: $CURL_DEPS"
 
-if [[ -n "$CURL_DEPS" ]]; then
-  apt-get install --download-only --reinstall -y $CURL_DEPS curl
-else
-  apt-get install --download-only --reinstall -y curl
-fi
+# 把这4个包本身也加进去
+ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
 
-# (2.4) 并行化处理 proxmox-default-kernel, proxmox-ve, openssh-server, gnupg, tasksel
-echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends in parallel ==="
-PACKAGES="proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
+# 并行化解析虚拟包
+echo "=== Resolving virtual packages in parallel ==="
+RESOLVED_DEPS=$(printf "%s\n" $ALL_PVE_DEPS | xargs -n1 -P"$(nproc)" -I{} bash -c 'resolve_virtual_pkg "{}"' | tr '\n' ' ')
 
-# 创建临时目录存储每个包的依赖输出
-TEMP_DEPS_DIR=$(mktemp -d)
-echo "Temporary dependencies directory: $TEMP_DEPS_DIR"
+echo "Resolved dependencies: $RESOLVED_DEPS"
 
-# 并行运行 apt-rdepends 并将输出保存到临时文件
-for pkg in $PACKAGES; do
-  {
-    echo "Processing package: $pkg"
-    apt-rdepends "$pkg" \
-      | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
-      | grep -v '^ ' \
-      >> "$TEMP_DEPS_DIR/deps.txt"
-  } &
-done
-
-# 等待所有后台进程完成
-wait
-
-# 收集所有依赖
-ALL_PVE_DEPS=$(cat "$TEMP_DEPS_DIR/deps.txt" | sort -u)
-
-# 添加原始包名以确保它们被包含
-ALL_PVE_DEPS+=" $PACKAGES"
-
-# 删除临时依赖目录
-rm -rf "$TEMP_DEPS_DIR"
-
+# -----------------------------
 # (2.5) 下载所有依赖(含可能的虚拟包)前，先做“虚拟包 -> 真实包”转换
-RESOLVED_DEPS=""
-for pkg in $ALL_PVE_DEPS; do
-  # 解析可能的虚拟包
-  realpkgs=$(resolve_virtual_pkg "$pkg")
-  RESOLVED_DEPS+=" $realpkgs"
-done
+# -----------------------------
+# 原有的 (2.5) 步骤已通过并行化在上面完成，因此无需保留
 
-# (2.6) 批量下载
+# -----------------------------
+# (2.6) 下载所有依赖(含可能的虚拟包)
+# -----------------------------
 ORIGINAL_DIR=$(pwd)
 CACHE_DIR="/var/cache/apt/archives"
 chown -R _apt:root "$CACHE_DIR"
@@ -143,7 +109,9 @@ done
 cd "$ORIGINAL_DIR"
 echo "=== All dependencies downloaded to $CACHE_DIR ==="
 
+# -----------------------------
 # (2.7) 将下载好的 .deb 拷贝到离线仓库目录 $WORKDIR/pve
+# -----------------------------
 echo "==== Copying downloaded packages to $WORKDIR/pve ===="
 cp /var/cache/apt/archives/*.deb "$WORKDIR/pve/" || true
 
