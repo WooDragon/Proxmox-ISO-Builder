@@ -92,13 +92,32 @@ fi
 echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends in parallel ==="
 PACKAGES="proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
 
-ALL_PVE_DEPS=$(echo "$PACKAGES" | xargs -n1 -P5 -I {} apt-rdepends {} \
-  | grep -v '^ ' \
-  | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
-  | sort -u)
+# 创建临时目录存储每个包的依赖输出
+TEMP_DEPS_DIR=$(mktemp -d)
+echo "Temporary dependencies directory: $TEMP_DEPS_DIR"
 
-# 把这些包本身也加进去
+# 并行运行 apt-rdepends 并将输出保存到临时文件
+for pkg in $PACKAGES; do
+  {
+    echo "Processing package: $pkg"
+    apt-rdepends "$pkg" \
+      | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
+      | grep -v '^ ' \
+      >> "$TEMP_DEPS_DIR/deps.txt"
+  } &
+done
+
+# 等待所有后台进程完成
+wait
+
+# 收集所有依赖
+ALL_PVE_DEPS=$(cat "$TEMP_DEPS_DIR/deps.txt" | sort -u)
+
+# 添加原始包名以确保它们被包含
 ALL_PVE_DEPS+=" $PACKAGES"
+
+# 删除临时依赖目录
+rm -rf "$TEMP_DEPS_DIR"
 
 # (2.5) 下载所有依赖(含可能的虚拟包)前，先做“虚拟包 -> 真实包”转换
 RESOLVED_DEPS=""
