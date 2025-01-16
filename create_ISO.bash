@@ -68,6 +68,40 @@ resolve_virtual_pkg() {
 export -f resolve_virtual_pkg
 
 # -----------------------------
+# (2.1) 下载几个必需的包（不包含 proxmox-ve） 
+#       包括 postfix, open-iscsi, chrony
+# -----------------------------
+echo "=== Downloading essential packages: postfix, open-iscsi, chrony ==="
+apt-get install --download-only -y postfix open-iscsi chrony
+
+# -----------------------------
+# (2.2) 下载 “standard” 任务及附加包所需的 .deb
+#       先获取 standard 任务下的所有包名:
+# -----------------------------
+echo "=== Installing tasksel and downloading standard task packages ==="
+apt-get install --download-only -y tasksel
+
+# 使用 tasksel 获取标准任务包
+STANDARD_PACKAGES=$(tasksel --task-packages standard)
+
+# -----------------------------
+# (2.3) 针对 curl 做同样处理（先拿到依赖，再 reinstall）
+# -----------------------------
+echo "==== Listing dependencies for curl using apt-rdepends ===="
+# 使用 apt-rdepends 递归列出所有依赖
+CURL_DEPS=$(apt-rdepends curl \
+  | grep -vE '^ ' \
+  | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends)' \
+  | sort -u)
+echo "curl deps: $CURL_DEPS"
+
+if [[ -n "$CURL_DEPS" ]]; then
+  apt-get install --download-only --reinstall -y $CURL_DEPS curl
+else
+  apt-get install --download-only --reinstall -y curl
+fi
+
+# -----------------------------
 # (2.4) 用 apt-rdepends 处理 proxmox-default-kernel, proxmox-ve, openssh-server, gnupg, tasksel环节
 #    并行化 resolve_virtual_pkg 以加速镜像生成
 # -----------------------------
@@ -77,7 +111,7 @@ ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnu
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-# 把这5个包本身也加进去
+# 把这些包本身也加进去
 ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
 
 # 并行化解析虚拟包
