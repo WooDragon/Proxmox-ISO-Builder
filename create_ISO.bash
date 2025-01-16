@@ -106,13 +106,15 @@ fi
 #    并行化 resolve_virtual_pkg 以加速镜像生成
 # -----------------------------
 echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
-ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel \
+ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel grub-pc grub-efi
+ grub-common \
   | grep -v '^ ' \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
 # 把这些包本身也加进去
-ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
+ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel grub-pc grub-efi
+ grub-common"
 
 # 并行化解析虚拟包
 echo "=== Resolving virtual packages in parallel ==="
