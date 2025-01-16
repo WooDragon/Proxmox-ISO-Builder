@@ -77,7 +77,7 @@ ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnu
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
 
-# 把这4个包本身也加进去
+# 把这5个包本身也加进去
 ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel"
 
 # 并行化解析虚拟包
@@ -88,23 +88,29 @@ echo "Resolved dependencies: $RESOLVED_DEPS"
 
 # -----------------------------
 # (2.5) 下载所有依赖(含可能的虚拟包)前，先做“虚拟包 -> 真实包”转换
+#    已通过并行化在上面完成，因此无需保留
 # -----------------------------
-# 原有的 (2.5) 步骤已通过并行化在上面完成，因此无需保留
 
 # -----------------------------
 # (2.6) 下载所有依赖(含可能的虚拟包)
+#    并行化下载过程
 # -----------------------------
 ORIGINAL_DIR=$(pwd)
 CACHE_DIR="/var/cache/apt/archives"
 chown -R _apt:root "$CACHE_DIR"
 chmod -R 755 "$CACHE_DIR"
+mkdir -p "$CACHE_DIR"
 cd "$CACHE_DIR"
 
-echo "=== Downloading all dependencies in batch (ignoring errors) ==="
+echo "=== Downloading all dependencies in parallel (ignoring errors) ==="
 echo "Resolved packages: $RESOLVED_DEPS"
-for rp in $RESOLVED_DEPS; do
-  apt-get download "$rp" || echo "Failed to download $rp"
-done
+
+# 使用 xargs 并行下载包
+printf "%s\n" $RESOLVED_DEPS | xargs -n1 -P"$(nproc)" -I{} bash -c '
+  if ! apt-get download "{}"; then
+    echo "Failed to download {}" >&2
+  fi
+'
 
 cd "$ORIGINAL_DIR"
 echo "=== All dependencies downloaded to $CACHE_DIR ==="
