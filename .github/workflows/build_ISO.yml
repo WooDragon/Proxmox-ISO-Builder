@@ -28,6 +28,23 @@ jobs:
           apt-get install -y \
             xorriso dpkg-dev curl gnupg syslinux-utils apt-rdepends wget mount tasksel
 
+      - name: Replace root password in preseed.cfg
+        env:
+          ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
+        run: |
+          # 确保 preseed.cfg 文件存在
+          if [ ! -f preseed.cfg ]; then
+            echo "Error: preseed.cfg not found!"
+            exit 1
+          fi
+
+          # 使用占位符替换密码（推荐）
+          sed -i "s|__ROOT_PASSWORD__|${ROOT_PASSWORD}|g" preseed.cfg
+
+          # 可选：验证替换是否成功
+          grep "d-i passwd/root-password password ${ROOT_PASSWORD}" preseed.cfg
+          grep "d-i passwd/root-password-again password ${ROOT_PASSWORD}" preseed.cfg
+
       # Step 3: Set version variables
       - name: Set version variables
         run: |
