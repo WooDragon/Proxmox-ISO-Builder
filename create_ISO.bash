@@ -163,6 +163,13 @@ gzip -9c Packages > Packages.gz
 cd -
 
 # -----------------------------
+# Step 2.1: Download and add Proxmox GPG key
+# -----------------------------
+echo "==== Downloading Proxmox GPG key ===="
+mkdir -p "$WORKDIR/iso/etc/apt/trusted.gpg.d"
+wget http://mirrors.ustc.edu.cn/proxmox/debian/proxmox-release-bookworm.gpg -O "$WORKDIR/iso/etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg"
+
+# -----------------------------
 # Step 3: Copy preseed + local repo to ISO
 # -----------------------------
 cp preseed.cfg "$WORKDIR/iso/"
