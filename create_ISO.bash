@@ -170,10 +170,14 @@ mkdir -p "$WORKDIR/iso/etc/apt/trusted.gpg.d"
 wget http://mirrors.ustc.edu.cn/proxmox/debian/proxmox-release-bookworm.gpg -O "$WORKDIR/iso/etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg"
 
 # -----------------------------
-# Step 3: Copy preseed + local repo to ISO
+# Step 3: Copy preseed + local repo + scripts to ISO
 # -----------------------------
 cp preseed.cfg "$WORKDIR/iso/"
 cp -r "$WORKDIR/pve" "$WORKDIR/iso/"
+
+# 复制 post-install 脚本到 ISO 的 /scripts/ 目录
+mkdir -p "$WORKDIR/iso/scripts"
+cp post_install_scripts/*.sh "$WORKDIR/iso/scripts/"
 
 # -----------------------------
 # Step 4: Modify bootloader
