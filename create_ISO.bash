@@ -198,6 +198,8 @@ EOF
 # 4.2 UEFI grub.cfg
 sed -i '/set timeout=/s/.*/set timeout=10/' "$WORKDIR/iso/boot/grub/grub.cfg"
 sed -i '/set default=/c\set default=\"Automated Installation\"' "$WORKDIR/iso/boot/grub/grub.cfg"
+grep 'menuentry' "$WORKDIR/iso/boot/grub/grub.cfg"
+grep 'set default=' "$WORKDIR/iso/boot/grub/grub.cfg"
 
 cat <<EOF >> "$WORKDIR/iso/boot/grub/grub.cfg"
 
