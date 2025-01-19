@@ -186,18 +186,6 @@ cp post_install_scripts/*.sh "$WORKDIR/iso/scripts/"
 # 4.1 BIOS isolinux
 sed -i '/timeout/s/.*/timeout 100/' "$WORKDIR/iso/isolinux/isolinux.cfg"
 
-echo "=== Adding Automated Installation entry to txt.cfg ==="
-AUTOMATED_INSTALL_ENTRY='label auto
-  menu label ^Automated Installation
-  kernel /install.amd/vmlinuz
-  append initrd=/install.amd/initrd.gz auto=true priority=high locale=zh_CN.UTF-8 keymap=us file=/cdrom/preseed.cfg --'
-
-# Use printf to insert the entry before the first "label" line
-sed -i "/label/ i $(printf "%s\n" "$AUTOMATED_INSTALL_ENTRY")" "$WORKDIR/iso/isolinux/txt.cfg"
-
-# 4.2 UEFI grub.cfg
-sed -i '/set timeout=/s/.*/set timeout=10/' "$WORKDIR/iso/boot/grub/grub.cfg"
-
 echo "=== Adding Automated Installation entry to grub.cfg ==="
 AUTOMATED_INSTALL_ENTRY='menuentry "Automated Installation" {
     set gfxpayload=keep
@@ -205,8 +193,20 @@ AUTOMATED_INSTALL_ENTRY='menuentry "Automated Installation" {
     initrd /install.amd/initrd.gz
 }'
 
-# Use printf to insert the entry before the first "menuentry" line
-sed -i "/menuentry/ i $(printf "%s\n" "$AUTOMATED_INSTALL_ENTRY")" "$WORKDIR/iso/boot/grub/grub.cfg"
+# Insert the entry before the first "menuentry" line using awk
+awk -v new_entry="$AUTOMATED_INSTALL_ENTRY" '/menuentry/ {print new_entry} {print}' "$WORKDIR/iso/boot/grub/grub.cfg" > "$WORKDIR/iso/boot/grub/grub.cfg.tmp" && mv "$WORKDIR/iso/boot/grub/grub.cfg.tmp" "$WORKDIR/iso/boot/grub/grub.cfg"
+
+# 4.2 UEFI grub.cfg
+sed -i '/set timeout=/s/.*/set timeout=10/' "$WORKDIR/iso/boot/grub/grub.cfg"
+
+echo "=== Adding Automated Installation entry to txt.cfg ==="
+AUTOMATED_INSTALL_ENTRY='label auto
+  menu label ^Automated Installation
+  kernel /install.amd/vmlinuz
+  append initrd=/install.amd/initrd.gz auto=true priority=high locale=zh_CN.UTF-8 keymap=us file=/cdrom/preseed.cfg --'
+
+# Insert the entry before the "label" line using awk
+awk -v new_entry="$AUTOMATED_INSTALL_ENTRY" '/label/ {print new_entry} {print}' "$WORKDIR/iso/isolinux/txt.cfg" > "$WORKDIR/iso/isolinux/txt.cfg.tmp" && mv "$WORKDIR/iso/isolinux/txt.cfg.tmp" "$WORKDIR/iso/isolinux/txt.cfg"
 
 # -----------------------------
 # Step 5: Build custom ISO
