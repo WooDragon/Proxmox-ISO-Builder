@@ -187,29 +187,26 @@ cp post_install_scripts/*.sh "$WORKDIR/iso/scripts/"
 sed -i '/timeout/s/.*/timeout 100/' "$WORKDIR/iso/isolinux/isolinux.cfg"
 
 echo "=== Adding Automated Installation entry to txt.cfg ==="
-AUTOMATED_INSTALL_ENTRY='
-label auto
+AUTOMATED_INSTALL_ENTRY='label auto
   menu label ^Automated Installation
   kernel /install.amd/vmlinuz
-  append initrd=/install.amd/initrd.gz auto=true priority=high locale=zh_CN.UTF-8 keymap=us file=/cdrom/preseed.cfg --
-'
+  append initrd=/install.amd/initrd.gz auto=true priority=high locale=zh_CN.UTF-8 keymap=us file=/cdrom/preseed.cfg --'
 
-# Find the position of the first label and insert the new entry before it
-sed -i "/label/ i $AUTOMATED_INSTALL_ENTRY" "$WORKDIR/iso/isolinux/txt.cfg"
+# Use printf to insert the entry before the first "label" line
+sed -i "/label/ i $(printf "%s\n" "$AUTOMATED_INSTALL_ENTRY")" "$WORKDIR/iso/isolinux/txt.cfg"
 
 # 4.2 UEFI grub.cfg
 sed -i '/set timeout=/s/.*/set timeout=10/' "$WORKDIR/iso/boot/grub/grub.cfg"
-echo "=== Adding Automated Installation menuentry to grub.cfg ==="
-AUTOMATED_INSTALL_ENTRY='
-menuentry "Automated Installation" {
+
+echo "=== Adding Automated Installation entry to grub.cfg ==="
+AUTOMATED_INSTALL_ENTRY='menuentry "Automated Installation" {
     set gfxpayload=keep
     linux /install.amd/vmlinuz auto=true priority=high locale=zh_CN.UTF-8 keymap=us file=/cdrom/preseed.cfg --
     initrd /install.amd/initrd.gz
-}
-'
+}'
 
-# Find the position of the first menuentry and insert the new entry before it
-sed -i "/menuentry/ i $AUTOMATED_INSTALL_ENTRY" "$WORKDIR/iso/boot/grub/grub.cfg"
+# Use printf to insert the entry before the first "menuentry" line
+sed -i "/menuentry/ i $(printf "%s\n" "$AUTOMATED_INSTALL_ENTRY")" "$WORKDIR/iso/boot/grub/grub.cfg"
 
 # -----------------------------
 # Step 5: Build custom ISO
