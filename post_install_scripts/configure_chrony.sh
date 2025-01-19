@@ -24,4 +24,3 @@ server time3.google.com minpoll 4 maxpoll 10 iburst
 server time4.google.com minpoll 4 maxpoll 10 iburst
 EOF
 
-systemctl restart chrony
