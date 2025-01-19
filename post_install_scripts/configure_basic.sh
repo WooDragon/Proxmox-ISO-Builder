@@ -1,5 +1,4 @@
 #!/bin/bash
-echo "127.0.0.1 proxmox.local proxmox" >> /etc/hosts
 # 配置 /etc/fstab
 sed -i 's/\(.*\) \{1,\}[0-9]\+$/\10/' /etc/fstab
 # 创建 systemd override 文件以设置 TimeoutStartSec
