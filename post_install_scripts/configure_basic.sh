@@ -2,8 +2,8 @@
 # 配置 /etc/fstab
 sed -i 's/\(.*\) \{1,\}[0-9]\+$/\10/' /etc/fstab
 # 创建 systemd override 文件以设置 TimeoutStartSec
-mkdir -p /etc/systemd/system/networking.service.d
-echo -e '[Service]\nTimeoutStartSec=90s' > /etc/systemd/system/networking.service.d/override.conf
+#mkdir -p /etc/systemd/system/networking.service.d
+#echo -e '[Service]\nTimeoutStartSec=90s' > /etc/systemd/system/networking.service.d/override.conf
 # 配置 APT 源列表
 echo 'deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm main contrib non-free non-free-firmware' > /etc/apt/sources.list
 echo 'deb https://mirrors.tuna.tsinghua.edu.cn/debian/ bookworm-updates main contrib non-free non-free-firmware' >> /etc/apt/sources.list
