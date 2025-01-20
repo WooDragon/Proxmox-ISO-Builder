@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script Version: v2.2
+# Script Version: v2.3
 
 # Function to generate the device ID based on serial or MAC
 generate_device_id() {
@@ -40,9 +40,15 @@ update_issue() {
     device_id=$(echo -n "$serial" | sha256sum | cut -c1-8)
     ascii_qr=$(echo -n "$device_id" | qrencode -t ASCIIi -l M)
 
-    # Step 1: Update /etc/issue
+    # Step 1: Unlock /etc/issue before modification
+    chattr -i /etc/issue
+
+    # Step 2: Update /etc/issue
     echo -e "Device ID: $device_id\n\n$ascii_qr" > /etc/issue
     echo "Updated /etc/issue with Device ID and ASCII QR code."
+
+    # Step 3: Lock /etc/issue after modification
+    chattr +i /etc/issue
 }
 
 # Function to rename and reboot VMs
