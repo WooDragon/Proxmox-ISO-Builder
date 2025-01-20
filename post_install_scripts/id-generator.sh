@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script Version: v2.3
+# Script Version: v2.5
 
 # Function to generate the device ID based on serial or MAC
 generate_device_id() {
@@ -35,19 +35,32 @@ generate_device_id() {
     fi
 }
 
-# Function to update /etc/issue with device ID and ASCII QR code
+# Function to update /etc/issue with device ID, ASCII QR code, IP addresses, and interfaces
 update_issue() {
     device_id=$(echo -n "$serial" | sha256sum | cut -c1-8)
     ascii_qr=$(echo -n "$device_id" | qrencode -t ASCIIi -l M)
 
-    # Step 1: Unlock /etc/issue before modification
+    # Step 1: Get IP Addresses and Network Interfaces (excluding loopback and fe80::)
+    ipv4_info=$(ip -4 addr show | grep -v '127.0.0.1' | awk '/inet / {print $2, $NF}' | cut -d/ -f1)
+    ipv6_info=$(ip -6 addr show | grep -v '::1' | grep -v 'fe80' | awk '/inet6 / {print $2, $NF}' | cut -d/ -f1)
+
+    # Step 2: Format IP addresses and interfaces into a readable format
+    ip_info=""
+    if [ -n "$ipv4_info" ]; then
+        ip_info="IPv4 Addresses and Interfaces:\n$ipv4_info"
+    fi
+    if [ -n "$ipv6_info" ]; then
+        ip_info="$ip_info\nIPv6 Addresses and Interfaces:\n$ipv6_info"
+    fi
+
+    # Step 3: Unlock /etc/issue before modification
     chattr -i /etc/issue
 
-    # Step 2: Update /etc/issue
-    echo -e "Device ID: $device_id\n\n$ascii_qr" > /etc/issue
-    echo "Updated /etc/issue with Device ID and ASCII QR code."
+    # Step 4: Update /etc/issue
+    echo -e "Device ID: $device_id\n\n$ascii_qr\n\n$ip_info" > /etc/issue
+    echo "Updated /etc/issue with Device ID, ASCII QR code, IP addresses, and interfaces."
 
-    # Step 3: Lock /etc/issue after modification
+    # Step 5: Lock /etc/issue after modification
     chattr +i /etc/issue
 }
 
