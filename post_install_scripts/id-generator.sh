@@ -38,7 +38,7 @@ generate_device_id() {
 # Function to update /etc/issue with device ID, ASCII QR code, IP addresses, and interfaces
 update_issue() {
     device_id=$(echo -n "$serial" | sha256sum | cut -c1-8)
-    ascii_qr=$(echo -n "$device_id" | qrencode -t ASCIIi -l M)
+    ascii_qr=$(echo -n "$device_id" | qrencode -t ASCIIi -l H)
 
     # Step 1: Get IP Addresses and Network Interfaces (excluding loopback and fe80::)
     ipv4_info=$(ip -4 addr show | grep -v '127.0.0.1' | awk '/inet / {print $2, $NF}' | cut -d/ -f1)
