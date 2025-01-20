@@ -38,7 +38,7 @@ generate_device_id() {
 # Function to update /etc/issue with device ID and ASCII QR code
 update_issue() {
     device_id=$(echo -n "$serial" | sha256sum | cut -c1-8)
-    ascii_qr=$(echo -n "$device_id" | qrencode -t ASCII)
+    ascii_qr=$(echo -n "$device_id" | qrencode -t ASCIIi -l M)
 
     # Step 1: Update /etc/issue
     echo -e "Device ID: $device_id\n\n$ascii_qr" > /etc/issue
