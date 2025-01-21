@@ -4,10 +4,10 @@ on:
 
 jobs:
   build:
-    # 1) 运行环境：使用 GitHub 提供的 Ubuntu 宿主机
+    # 运行环境：使用 GitHub 提供的 Ubuntu 宿主机
     runs-on: ubuntu-latest
 
-    # 2) 在指定容器中执行构建，这个容器基于 Debian
+    # 在指定容器中执行构建，这个容器基于 Debian
     container:
       image: debian:latest
       # 允许在容器中 mount，需要 --privileged
@@ -17,11 +17,11 @@ jobs:
       contents: write
 
     steps:
-      # Step 1: Checkout the repository
+      # Checkout the repository
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: Install dependencies in the Debian container
+      # Install dependencies in the Debian container
       - name: Install dependencies
         run: |
           apt-get update
@@ -45,12 +45,12 @@ jobs:
           grep "d-i passwd/root-password password ${ROOT_PASSWORD}" preseed.cfg
           grep "d-i passwd/root-password-again password ${ROOT_PASSWORD}" preseed.cfg
 
-      # Step 3: Set version variables
+      # Set version variables
       - name: Set version variables
         run: |
           echo "DEBIAN_VERSION=12.8.0" >> $GITHUB_ENV
 
-      # Step 4: Determine ISO URL and file name dynamically
+      # Determine ISO URL and file name dynamically
       - name: Fetch latest ISO URL
         run: |
           ISO_BASE_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/"
@@ -59,7 +59,7 @@ jobs:
           echo "DEBIAN_ISO_URL=${ISO_BASE_URL}${ISO_FILE}" >> $GITHUB_ENV
         shell: bash
 
-      # Step 5: Download the Debian ISO
+      # Download the Debian ISO
       - name: Download Debian ISO
         run: |
           wget -q $DEBIAN_ISO_URL -O $DEBIAN_ISO_NAME
@@ -69,13 +69,13 @@ jobs:
             exit 1
           fi
 
-      # Step 6: Make script executable & run create_ISO.bash inside container
+      # Make script executable & run create_ISO.bash inside container
       - name: Build custom ISO
         run: |
           chmod +x create_ISO.bash
           ./create_ISO.bash "$DEBIAN_ISO_NAME" proxmox_custom.iso
 
-      # Step 7: Verify the custom ISO contents (optional)
+      # Verify the custom ISO contents (optional)
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
@@ -84,7 +84,7 @@ jobs:
           ls -lh mnt/pve/
           umount mnt
 
-      # Step 8: Release the custom ISO
+      # Release the custom ISO
       - uses: ncipollo/release-action@v1
         with:
           commit: "main"
