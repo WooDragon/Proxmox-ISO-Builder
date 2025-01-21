@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script Version: v2.5
+# Script Version: v2.6
 
 # Function to generate the device ID based on serial or MAC
 generate_device_id() {
@@ -27,8 +27,9 @@ generate_device_id() {
 
     # Step 3: Generate Hostnames
     if [ -n "$serial" ]; then
-        hostname_4g="4g-mgmt.$(echo -n "$serial" | sha256sum | cut -c1-8)"
-        hostname_mgmt="mgmt.$(echo -n "$serial" | sha256sum | cut -c1-8)"
+        device_id=$(echo -n "$serial" | sha256sum | cut -c1-8)
+        hostname_4g="4g-mgmt.$device_id"
+        hostname_mgmt="mgmt.$device_id"
     else
         echo "No valid Serial Number or MAC address found."
         exit 1
@@ -37,7 +38,6 @@ generate_device_id() {
 
 # Function to update /etc/issue with device ID, ASCII QR code, IP addresses, and interfaces
 update_issue() {
-    device_id=$(echo -n "$serial" | sha256sum | cut -c1-8)
     ascii_qr=$(echo -n "$device_id" | qrencode -t ASCIIi -l H)
 
     # Step 1: Get IP Addresses and Network Interfaces (excluding loopback and fe80::)
@@ -115,7 +115,7 @@ rename_vms() {
 
 # Main script entry point
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 {qm|issue}"
+    echo "Usage: $0 {qm|issue|getid}"
     exit 1
 fi
 
@@ -129,8 +129,12 @@ case "$1" in
         generate_device_id
         update_issue
         ;;
+    getid)
+        generate_device_id
+        echo "$device_id"
+        ;;
     *)
-        echo "Invalid option. Use 'qm' to rename VMs or 'issue' to update /etc/issue."
+        echo "Invalid option. Use 'qm' to rename VMs, 'issue' to update /etc/issue, or 'getid' to output the generated Device ID."
         exit 1
         ;;
 esac
