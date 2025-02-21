@@ -1,21 +1,15 @@
 name: build_ISO
 on:
   workflow_dispatch:
-
 jobs:
   build:
-    # 运行环境：使用 GitHub 提供的 Ubuntu 宿主机
     runs-on: ubuntu-latest
-
-    # 在指定容器中执行构建，这个容器基于 Debian
     container:
       image: debian:latest
       # 允许在容器中 mount，需要 --privileged
       options: --privileged
-
     permissions:
       contents: write
-
     steps:
       # Checkout the repository
       - name: Checkout code
@@ -28,20 +22,16 @@ jobs:
           apt-get install -y \
             xorriso dpkg-dev curl gnupg syslinux-utils apt-rdepends wget mount tasksel
 
+      # Replace root password in preseed.cfg
       - name: Replace root password in preseed.cfg
         env:
           ROOT_PASSWORD: ${{ secrets.ROOT_PASSWORD }}
         run: |
-          # 确保 preseed.cfg 文件存在
           if [ ! -f preseed.cfg ]; then
             echo "Error: preseed.cfg not found!"
             exit 1
           fi
-
-          # 使用占位符替换密码（推荐）
           sed -i "s|__ROOT_PASSWORD__|${ROOT_PASSWORD}|g" preseed.cfg
-
-          # 可选：验证替换是否成功
           grep "d-i passwd/root-password password ${ROOT_PASSWORD}" preseed.cfg
           grep "d-i passwd/root-password-again password ${ROOT_PASSWORD}" preseed.cfg
 
@@ -84,11 +74,11 @@ jobs:
           ls -lh mnt/pve/
           umount mnt
 
-      # Release the custom ISO
+      # Release the custom ISO with date in the filename
       - uses: ncipollo/release-action@v1
         with:
           commit: "main"
           name: "Download ISO"
           tag: "${{ env.DEBIAN_VERSION }}"
-          artifacts: "proxmox_custom.iso"
+          artifacts: "release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso"
           allowUpdates: true
