@@ -106,7 +106,7 @@ fi
 #    并行化 resolve_virtual_pkg 以加速镜像生成
 # -----------------------------
 echo "=== Recursively listing proxmox-ve dependencies via apt-rdepends ==="
-ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel dmidecode qrencode \
+ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel dmidecode qrencode btrfs-progs parted \
   | grep -v '^ ' \
   | grep -vE '^(Reading|Build-Depends|Suggests|Recommends|Conflicts|Breaks|PreDepends|Enhances|Replaces|Provides)' \
   | sort -u)
@@ -119,11 +119,6 @@ echo "=== Resolving virtual packages in parallel ==="
 RESOLVED_DEPS=$(printf "%s\n" $ALL_PVE_DEPS | xargs -n1 -P"$(nproc)" -I{} bash -c 'resolve_virtual_pkg "{}"' | tr '\n' ' ')
 
 echo "Resolved dependencies: $RESOLVED_DEPS"
-
-# -----------------------------
-# (2.5) 下载所有依赖(含可能的虚拟包)前，先做“虚拟包 -> 真实包”转换
-#    已通过并行化在上面完成，因此无需保留
-# -----------------------------
 
 # -----------------------------
 # (2.6) 下载所有依赖(含可能的虚拟包)
