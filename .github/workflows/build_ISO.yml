@@ -63,13 +63,15 @@ jobs:
       - name: Build custom ISO
         run: |
           chmod +x create_ISO.bash
-          ./create_ISO.bash "$DEBIAN_ISO_NAME" "release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso"
+          ISO_FILENAME="release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso"
+          ./create_ISO.bash "$DEBIAN_ISO_NAME" "$ISO_FILENAME"
+          echo "CUSTOM_ISO_FILENAME=$ISO_FILENAME" >> $GITHUB_ENV
 
       # Verify the custom ISO contents (optional)
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
-          mount -o loop "release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso" mnt
+          mount -o loop "${{ env.CUSTOM_ISO_FILENAME }}" mnt
           echo "ISO contents in /pve directory:"
           ls -lh mnt/pve/
           umount mnt
@@ -77,8 +79,17 @@ jobs:
       # Release the custom ISO with date in the filename
       - uses: ncipollo/release-action@v1
         with:
-          commit: "main"
-          name: "Download ISO"
-          tag: "${{ env.DEBIAN_VERSION }}"
-          artifacts: "release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso"
-          allowUpdates: true
+          commit: ${{ github.sha }} # 使用触发的 commit SHA
+          name: "Debian ${{ env.DEBIAN_VERSION }} Custom ISO (${{ github.run_id }})" # 更具描述性的名称
+          tag: "v${{ env.DEBIAN_VERSION }}-${{ github.run_id }}" # 每次运行使用唯一标签
+          artifacts: "${{ env.CUSTOM_ISO_FILENAME }}"
+          allowUpdates: false # 创建新 Release，不更新
+
+      # Clean up older releases, keeping the latest 3
+      - name: Clean up older releases
+        uses: dev-drprasad/delete-older-releases@v0.3.4
+        with:
+          keep_latest: 3 # 保留最新的 3 个 Release
+          delete_tags: true # 同时删除关联的 Git 标签
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
