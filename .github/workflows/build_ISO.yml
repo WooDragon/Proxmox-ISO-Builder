@@ -63,13 +63,13 @@ jobs:
       - name: Build custom ISO
         run: |
           chmod +x create_ISO.bash
-          ./create_ISO.bash "$DEBIAN_ISO_NAME" proxmox_custom.iso
+          ./create_ISO.bash "$DEBIAN_ISO_NAME" "release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso"
 
       # Verify the custom ISO contents (optional)
       - name: Verify custom ISO contents
         run: |
           mkdir -p mnt
-          mount -o loop proxmox_custom.iso mnt
+          mount -o loop "release_pve-custom-${{ github.run_id }}-$(date +%y%m%d).iso" mnt
           echo "ISO contents in /pve directory:"
           ls -lh mnt/pve/
           umount mnt
