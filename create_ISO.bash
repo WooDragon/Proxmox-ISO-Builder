@@ -112,7 +112,7 @@ ALL_PVE_DEPS=$(apt-rdepends proxmox-default-kernel proxmox-ve openssh-server gnu
   | sort -u)
 
 # 把这些包本身也加进去
-ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel dmidecode qrencode"
+ALL_PVE_DEPS+=" proxmox-default-kernel proxmox-ve openssh-server gnupg tasksel dmidecode qrencode btrfs-progs parted"
 
 # 并行化解析虚拟包
 echo "=== Resolving virtual packages in parallel ==="
