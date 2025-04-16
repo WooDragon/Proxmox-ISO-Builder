@@ -13,3 +13,6 @@ echo 'deb https://security.debian.org/debian-security bookworm-security main con
 rm -f /etc/apt/sources.list.d/pve-enterprise.list || true
 # 添加 Proxmox no-subscription 源
 echo 'deb http://mirrors.ustc.edu.cn/proxmox/debian/pve bookworm pve-no-subscription' > /etc/apt/sources.list.d/pve-install-repo.list
+# 修改 CT 源
+cp /usr/share/perl5/PVE/APLInfo.pm /usr/share/perl5/PVE/APLInfo.pm_back
+sed -i 's|http://download.proxmox.com|https://mirrors.tuna.tsinghua.edu.cn/proxmox|g' /usr/share/perl5/PVE/APLInfo.pm
